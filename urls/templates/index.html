@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>URL Shortener</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f0fdf4;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fef2f2;
+            color: #b91c1c;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .short-url {
+            font-weight: bold;
+            word-break: break-all;
+        }
+
+        .success {
+            margin-top: 15px;
+            color: #15803d;
+            display: none;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>URL Shortener</h1>
+
+    <p class="subtitle">
+        Create short and easy-to-share URLs
+    </p>
+
+    <!-- LOGIN SECTION -->
+
+    <div class="section">
+
+        <h2>Login</h2>
+
+        <label for="username">
+            Username
+        </label>
+
+        <input
+            type="text"
+            id="username"
+            placeholder="Enter username"
+        >
+
+        <label for="password">
+            Password
+        </label>
+
+        <input
+            type="password"
+            id="password"
+            placeholder="Enter password"
+        >
+
+        <button type="button" id="loginButton">
+            Login
+        </button>
+
+        <p class="success" id="loginSuccess">
+            Login successful!
+        </p>
+
+        <div class="error" id="loginError"></div>
+
+    </div>
+
+    <hr>
+
+    <!-- URL SHORTENER SECTION -->
+
+    <div class="section">
+
+        <h2>Shorten URL</h2>
+
+        <form id="urlForm">
+
+            <label for="originalUrl">
+                Original URL
+            </label>
+
+            <input
+                type="url"
+                id="originalUrl"
+                placeholder="https://example.com"
+                required
+            >
+
+            <label for="customAlias">
+                Custom Alias (Optional)
+            </label>
+
+            <input
+                type="text"
+                id="customAlias"
+                placeholder="my-link"
+            >
+
+            <label for="expiresAt">
+                Expiration Date (Optional)
+            </label>
+
+            <input
+                type="datetime-local"
+                id="expiresAt"
+            >
+
+
+            <button type="submit">
+                Shorten URL
+            </button>
+
+        </form>
+
+    </div>
+
+    <div class="result" id="result">
+
+        <strong>Your shortened URL:</strong>
+
+        <p class="short-url" id="shortUrl"></p>
+
+    </div>
+
+    <div class="error" id="error"></div>
+
+</div>
+
+<script>
+
+    let accessToken = "";
+
+    // LOGIN
+
+    document.getElementById("loginButton").addEventListener(
+        "click",
+        async function() {
+
+            const username =
+                document.getElementById("username").value;
+
+            const password =
+                document.getElementById("password").value;
+
+            const loginError =
+                document.getElementById("loginError");
+
+            const loginSuccess =
+                document.getElementById("loginSuccess");
+
+            loginError.style.display = "none";
+            loginSuccess.style.display = "none";
+
+            try {
+
+                const response = await fetch("/api/token/", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail || "Login failed"
+                    );
+                }
+
+                accessToken = data.access;
+
+                loginSuccess.style.display = "block";
+
+            } catch (error) {
+
+                loginError.textContent = error.message;
+                loginError.style.display = "block";
+
+            }
+
+        }
+    );
+
+
+    // CREATE SHORT URL
+
+    document.getElementById("urlForm").addEventListener(
+        "submit",
+        async function(event) {
+
+            event.preventDefault();
+
+            const result =
+                document.getElementById("result");
+
+            const error =
+                document.getElementById("error");
+
+            result.style.display = "none";
+            error.style.display = "none";
+
+            if (!accessToken) {
+
+                error.textContent =
+                    "Please login before creating a URL.";
+
+                error.style.display = "block";
+
+                return;
+            }
+
+            const originalUrl =
+                document.getElementById("originalUrl").value;
+
+            const customAlias =
+                document.getElementById("customAlias").value;
+
+
+            const expiresAt =
+                document.getElementById("expiresAt").value;
+
+            try {
+
+                const response = await fetch("/api/urls", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + accessToken
+                    },
+
+                    body: JSON.stringify({
+                        original_url: originalUrl,
+                        custom_alias: customAlias || null,
+                        expires_at: expiresAt || null
+                    })
+
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.error ||
+                        data.detail ||
+                        "Something went wrong"
+                    );
+                }
+
+                const generatedUrl =
+                    window.location.origin +
+                    "/" +
+                    data.short_code;
+
+                document.getElementById("shortUrl").innerHTML =
+                    `<a href="${generatedUrl}" target="_blank">
+                        ${generatedUrl}
+                    </a>`;
+
+                result.style.display = "block";
+
+            } catch (error) {
+
+                error.textContent = error.message;
+                error.style.display = "block";
+
+            }
+
+        }
+    );
+
+</script>
+
+</body>
+</html>
